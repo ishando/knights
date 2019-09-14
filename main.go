@@ -25,13 +25,13 @@ var combattants = []Knight{}
 var areaWidth, areaHeight int
 var game *tl.Game
 
-// Containers -
-type Containers interface {
+// Container -
+type Container interface {
 	Contains(c Coord) bool
 	// Draw(s *tl.Screen)
 }
 
-var gameObjects = []Containers{}
+var gameObjects = []Container{}
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -57,22 +57,13 @@ func main() {
 
 	gameObjects = append(gameObjects, NewKnights(3))
 
-	// for _, k := range combattants {
-	// 	k.SetCell(k.Position.X, k.Position.Y, &tl.Cell{Bg: k.BgColour, Fg: k.Colour, Ch: charKnight})
-	// }
-
-	level.AddEntity(gameObjects[0].(*Border))
-	level.AddEntity(gameObjects[1].(*Trees))
-	level.AddEntity(gameObjects[2].(*Traps))
-	level.AddEntity(gameObjects[3].(*Temples))
-	level.AddEntity(gameObjects[4].(*Knights))
-
-	// for _, gO := range gameObjects {
-	// 	level.AddEntity(gO)
-	// }
+	for _, gObj := range gameObjects {
+		level.AddEntity(gObj.(tl.Drawable))
+	}
 
 	game.Screen().SetLevel(level)
 	game.Screen().SetFps(2)
+	// game.SetEndKey(tl.KeyCtrlQ)
 	game.Start()
 }
 

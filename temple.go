@@ -26,7 +26,7 @@ func NewTemples(size int) *Temples {
 
 	for i := 0; i < size; i++ {
 		pos := NewRandomCoord()
-		t.coords[*pos] = 1
+		t.coords[pos] = 1
 	}
 
 	return t
@@ -61,10 +61,10 @@ func (t *Temples) close(c Coord) {
 }
 
 // Closest -
-func (t *Temples) Closest(c *Coord) *move {
+func (t *Temples) Closest(c Coord) *move {
 	dists := []move{}
 	for tc := range t.coords {
-		d := c.distance(&tc)
+		d := c.getMoves(tc)
 		if d.distance <= 4 {
 			dists = append(dists, d)
 		}

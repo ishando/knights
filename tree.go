@@ -24,7 +24,7 @@ func NewTrees(size int) *Trees {
 
 	for i := 0; i < size; i++ {
 		pos := NewRandomCoord()
-		t.coords[*pos] = 1
+		t.coords[pos] = 1
 	}
 
 	return t

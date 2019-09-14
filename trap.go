@@ -24,7 +24,7 @@ func NewTraps(size int) *Traps {
 
 	for len(t.coords) < size {
 		pos := NewRandomCoord()
-		t.coords[*pos] = 1
+		t.coords[pos] = 1
 	}
 
 	return t
@@ -58,7 +58,7 @@ func (t *Traps) teleport(c Coord) {
 	delete(t.coords, c)
 	newPos := NewRandomCoord()
 
-	t.coords[*newPos] = 1
+	t.coords[newPos] = 1
 }
 
 // Draw -

@@ -13,7 +13,7 @@ const (
 	knightChar  = 'K' //옷'
 	graveChar   = '±'
 	maxHealth   = 5
-	startHealth = 3
+	startHealth = 4
 
 	soundHeal     = "/usr/share/sounds/fredesktop/stereo/complete.oga"
 	soundTrap     = "/usr/share/sounds/fredesktop/stereo/camera-shutter.oga"
@@ -26,22 +26,22 @@ var colours = []tl.Attr{tl.ColorRed, tl.ColorBlue, tl.ColorYellow}
 
 // Knight -
 type Knight struct {
-	Health  int
-	Colour  tl.Attr
-	Glyph   rune
-	Pos     *Coord
-	Dirs    []int
-	lastDir int
+	Health int
+	Colour tl.Attr
+	Glyph  rune
+	Pos    Coord
+	Dirs   []Coord
+	// lastDir Coord
 }
 
 // NewKnight -
-func NewKnight(colour tl.Attr, pos *Coord) *Knight {
+func NewKnight(colour tl.Attr, pos Coord) *Knight {
 	k := &Knight{
 		Health: startHealth,
 		Colour: colour | tl.AttrReverse | tl.AttrUnderline,
 		Pos:    pos,
 		Glyph:  knightChar,
-		Dirs:   []int{dirNorth, dirSouth, dirEast, dirWest},
+		Dirs:   []Coord{dirN, dirNE, dirNW, dirE, dirW, dirSE, dirSW, dirS},
 	}
 
 	return k
@@ -67,7 +67,7 @@ func NewKnights(size int) *Knights {
 	for len(ks.coords) < size {
 		i := len(ks.coords)
 		pos := NewRandomCoord()
-		ks.coords[*pos] = i
+		ks.coords[pos] = i
 		ks.knights[i] = NewKnight(colours[i], pos)
 		// fmt.Printf("%+v|", pos)
 	}
@@ -110,28 +110,23 @@ func (ks *Knights) Tick(ev tl.Event) {
 		}
 
 		moved := false
-		oldPos := *k.Pos
-		newPos := *k.Pos
+		oldPos := k.Pos
+		newPos := k.Pos
 
 		di := 0
 		for !moved {
-			dir := k.Dirs[di%4]
-			if di < 4 && dir == -k.lastDir {
-				di++
-				continue
-			}
-
+			dir := k.Dirs[di]
 			newPos.Move(dir)
 
+			// if path contains tree try next best move
 			if gameObjects[objTrees].Contains(newPos) {
-				newPos = oldPos
+				newPos.Unmove(dir)
 				di++
 				continue
 			}
-			k.lastDir = k.Dirs[di%4]
 
 			if gameObjects[objBorder].Contains(newPos) {
-				newPos = *NewRandomCoord()
+				newPos = NewRandomCoord()
 			}
 
 			if gameObjects[objTraps].Contains(newPos) {
@@ -153,7 +148,7 @@ func (ks *Knights) Tick(ev tl.Event) {
 				}
 			}
 
-			k.Pos = &newPos
+			k.Pos = newPos
 			ks.coords[newPos] = i
 			delete(ks.coords, oldPos)
 			moved = true
@@ -175,7 +170,7 @@ func (ks *Knights) Tick(ev tl.Event) {
 
 type move struct {
 	distance   int
-	directions []int
+	directions []Coord
 	index      int
 }
 
@@ -185,33 +180,40 @@ func (ks *Knights) setDirs() {
 		kdists := []move{}
 		tdist := &move{}
 
+		// skip dead knights
 		if ks.knights[i].Health == 0 {
 			continue
 		}
 
 		for j := 0; j < len(ks.knights); j++ {
+			// skip self and dead knights
 			if j == i || ks.knights[j].Health == 0 {
 				continue
 			}
-			d := ks.knights[i].Pos.distance(ks.knights[j].Pos)
+			d := ks.knights[i].Pos.getMoves(ks.knights[j].Pos)
 			d.index = j
 			kdists = append(kdists, d)
 		}
+		// sort moves by distance to knights
 		sort.Slice(kdists, func(a, b int) bool { return kdists[a].distance < kdists[b].distance })
 
+		// check if a temple is visibile if below full health
 		if ks.knights[i].Health < maxHealth {
 			tdist = gameObjects[objTemples].(*Temples).Closest(ks.knights[i].Pos)
 
+			// if temple is visible and closer than closest knight, move towards it
 			if tdist != nil && tdist.distance < kdists[0].distance {
 				ks.knights[i].Dirs = tdist.directions
 				continue
 			}
 		}
 
-		if ks.knights[i].Health > ks.knights[kdists[0].index].Health {
-			ks.knights[i].Dirs = kdists[0].directions
-		} else {
-			ks.knights[i].Dirs = []int{kdists[0].directions[3], kdists[0].directions[2], kdists[0].directions[1], kdists[0].directions[0]}
+		ks.knights[i].Dirs = kdists[0].directions
+		// if nearest knight has more health then run away
+		if ks.knights[i].Health <= ks.knights[kdists[0].index].Health {
+			for di := range ks.knights[i].Dirs {
+				ks.knights[i].Dirs[di].Invert()
+			}
 		}
 	}
 }
@@ -221,18 +223,24 @@ func (ks *Knights) battle(i, j int) {
 		return
 	}
 
+	// if equal health - take one hit and walk away... otherwise healthiest kills weaker
 	if ks.knights[i].Health == ks.knights[j].Health {
-		ks.knights[i].Health = 0
-		ks.knights[j].Health = 0
-		ks.knights[i].Glyph = graveChar
-		ks.knights[j].Glyph = graveChar
-		ks.Alive--
+		ks.knights[i].Health--
+		ks.knights[j].Health--
+		ks.knights[i].Glyph = []rune(strconv.Itoa(ks.knights[j].Health))[0]
+		ks.knights[j].Glyph = []rune(strconv.Itoa(ks.knights[j].Health))[0]
+		if ks.knights[i].Health == 0 {
+			ks.Alive -= 2
+			ks.knights[i].Glyph = graveChar
+			ks.knights[j].Glyph = graveChar
+		}
 	} else if ks.knights[i].Health > ks.knights[j].Health {
 		ks.knights[j].Health = 0
 		ks.knights[j].Glyph = graveChar
+		ks.Alive--
 	} else {
 		ks.knights[i].Health = 0
 		ks.knights[i].Glyph = graveChar
+		ks.Alive--
 	}
-	ks.Alive--
 }
