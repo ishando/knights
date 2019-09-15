@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"math/rand"
 )
 
@@ -25,8 +26,8 @@ type mat []Coord
 
 // rotation matrices
 var (
-	RotClock     = mat{{1, -1}, {1, 1}}
-	RotAntiClock = mat{{1, 1}, {-1, 1}}
+	RotAntiClock = mat{{1, -1}, {1, 1}}
+	RotClock     = mat{{1, 1}, {-1, 1}}
 )
 
 // NewCoord -
@@ -102,96 +103,77 @@ func (c Coord) adjacent(c1 Coord) bool {
 	return false
 }
 
-func (c Coord) compare(c1 Coord) Coord {
-	cDir := NewCoord(0, 0)
-	switch {
-	case c.X < c1.X:
-		cDir.X = 1
-	case c.X > c1.X:
-		cDir.X = -1
-	}
-
-	switch {
-	case c.Y < c1.Y:
-		cDir.Y = 1
-	case c.Y > c1.Y:
-		cDir.Y = -1
-	}
-
-	return cDir
-}
-
 func (c Coord) getMoves(c1 Coord) move {
 	baseDir := NewCoord(0, 0)
-	rot := mat{}
+	rot := []mat{}
 
 	distX := c1.X - c.X
 	distY := c1.Y - c.Y
 
 	ratio := 10
 	if distX != 0 {
-		ratio = distY / distX
+		ratio = int(math.Round(float64(distY) / float64(distX)))
 	}
 
 	switch ratio {
 	case 0:
 		if distX >= 0 && distY > 0 {
 			baseDir = dirE
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else if distX >= 0 {
 			baseDir = dirE
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else if distY >= 0 {
 			baseDir = dirW
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else {
 			baseDir = dirW
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		}
 
 	case 1:
 		if distX >= 0 && distX > distY {
 			baseDir = dirSE
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else if distX >= 0 {
 			baseDir = dirSE
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else if distX >= distY {
 			baseDir = dirNW
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else {
 			baseDir = dirNW
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		}
 
 	case -1:
 		if distX >= 0 && distX > -distY {
 			baseDir = dirNE
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else if distX >= 0 {
 			baseDir = dirNE
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else if -distX >= distY {
 			baseDir = dirSW
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else {
 			baseDir = dirSW
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		}
 
 	default:
 		if distY >= 0 && distX > 0 {
 			baseDir = dirS
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		} else if distY >= 0 {
 			baseDir = dirS
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else if distX >= 0 {
 			baseDir = dirN
-			rot = RotClock
+			rot = []mat{RotClock, RotAntiClock}
 		} else {
 			baseDir = dirN
-			rot = RotAntiClock
+			rot = []mat{RotAntiClock, RotClock}
 		}
 	}
 
@@ -201,9 +183,12 @@ func (c Coord) getMoves(c1 Coord) move {
 	}
 
 	m.directions[0] = baseDir
-	for i := 1; i < len(m.directions); i++ {
+	for i := 1; i < len(m.directions); i += 2 {
 		c1 := m.directions[i-1]
-		m.directions[i] = c1.Rot(rot)
+		m.directions[i] = c1.Rot(rot[0])
+		if i+1 < len(m.directions) {
+			m.directions[i+1] = c1.Rot(rot[1])
+		}
 	}
 
 	return m

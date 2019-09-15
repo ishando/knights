@@ -22,7 +22,7 @@ const (
 	soundEnd      = "/usr/share/sounds/fredesktop/stereo/service-login.oga"
 )
 
-var colours = []tl.Attr{tl.ColorRed, tl.ColorBlue, tl.ColorYellow}
+var colours = []tl.Attr{tl.ColorRed, tl.ColorBlue, tl.ColorYellow, tl.ColorWhite, tl.ColorCyan, tl.ColorGreen}
 
 // Knight -
 type Knight struct {
@@ -31,17 +31,19 @@ type Knight struct {
 	Glyph  rune
 	Pos    Coord
 	Dirs   []Coord
+	text   *tl.Text
 	// lastDir Coord
 }
 
 // NewKnight -
-func NewKnight(colour tl.Attr, pos Coord) *Knight {
+func NewKnight(colour tl.Attr, pos Coord, index int) *Knight {
 	k := &Knight{
 		Health: startHealth,
 		Colour: colour | tl.AttrReverse | tl.AttrUnderline,
 		Pos:    pos,
 		Glyph:  knightChar,
 		Dirs:   []Coord{dirN, dirNE, dirNW, dirE, dirW, dirSE, dirSW, dirS},
+		text:   tl.NewText(areaWidth+10, index*2, strconv.Itoa(startHealth), colour, tl.ColorBlack),
 	}
 
 	return k
@@ -68,7 +70,7 @@ func NewKnights(size int) *Knights {
 		i := len(ks.coords)
 		pos := NewRandomCoord()
 		ks.coords[pos] = i
-		ks.knights[i] = NewKnight(colours[i], pos)
+		ks.knights[i] = NewKnight(colours[i], pos, i)
 		// fmt.Printf("%+v|", pos)
 	}
 
@@ -126,12 +128,27 @@ func (ks *Knights) Tick(ev tl.Event) {
 			}
 
 			if gameObjects[objBorder].Contains(newPos) {
-				newPos = NewRandomCoord()
+				// teleport, but not adjacent to another knight
+				ok := false
+				for !ok {
+					ok = true
+					newPos = NewRandomCoord()
+					for other := 0; other < len(ks.knights); other++ {
+						if other == i {
+							continue
+						}
+						if newPos.adjacent(ks.knights[other].Pos) {
+							ok = false
+							break
+						}
+					}
+				}
 			}
 
 			if gameObjects[objTraps].Contains(newPos) {
 				k.Health--
 				k.Glyph = []rune(strconv.Itoa(k.Health))[0]
+				k.text.SetText(strconv.Itoa(k.Health))
 				if k.Health == 0 {
 					k.Glyph = graveChar
 					ks.Alive--
@@ -142,6 +159,7 @@ func (ks *Knights) Tick(ev tl.Event) {
 				if k.Health < maxHealth {
 					k.Health++
 					k.Glyph = []rune(strconv.Itoa(k.Health))[0]
+					k.text.SetText(strconv.Itoa(k.Health))
 				}
 				if k.Health == maxHealth {
 					k.Glyph = knightChar
@@ -161,6 +179,10 @@ func (ks *Knights) Tick(ev tl.Event) {
 				ks.battle(i, j)
 			}
 		}
+	}
+
+	for _, k := range ks.knights {
+		k.text.Draw(game.Screen())
 	}
 
 	if ks.Alive <= 1 {
@@ -228,7 +250,10 @@ func (ks *Knights) battle(i, j int) {
 		ks.knights[i].Health--
 		ks.knights[j].Health--
 		ks.knights[i].Glyph = []rune(strconv.Itoa(ks.knights[j].Health))[0]
+		ks.knights[i].text.SetText(strconv.Itoa(ks.knights[i].Health))
 		ks.knights[j].Glyph = []rune(strconv.Itoa(ks.knights[j].Health))[0]
+		ks.knights[j].text.SetText(strconv.Itoa(ks.knights[j].Health))
+
 		if ks.knights[i].Health == 0 {
 			ks.Alive -= 2
 			ks.knights[i].Glyph = graveChar
@@ -237,10 +262,12 @@ func (ks *Knights) battle(i, j int) {
 	} else if ks.knights[i].Health > ks.knights[j].Health {
 		ks.knights[j].Health = 0
 		ks.knights[j].Glyph = graveChar
+		ks.knights[j].text.SetText(strconv.Itoa(ks.knights[j].Health))
 		ks.Alive--
 	} else {
 		ks.knights[i].Health = 0
 		ks.knights[i].Glyph = graveChar
+		ks.knights[i].text.SetText(strconv.Itoa(ks.knights[i].Health))
 		ks.Alive--
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"math/rand"
 	"time"
 
@@ -36,6 +37,21 @@ var gameObjects = []Container{}
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	speed := flag.Int("speed", 3, "speed (1-5)")
+	players := flag.Int("knights", 3, "knights (2-6)")
+	flag.Parse()
+
+	if *speed < 1 {
+		*speed = 1
+	} else if *speed > 5 {
+		*speed = 5
+	}
+	if *players < 2 {
+		*players = 2
+	} else if *players > 6 {
+		*players = 6
+	}
+
 	game = tl.NewGame()
 	game.SetDebugOn(true)
 
@@ -46,23 +62,26 @@ func main() {
 	})
 	level.SetOffset(60, 10)
 
-	areaWidth, areaHeight = 40, 30
+	areaWidth, areaHeight = 40+*players, 30+*players
 
 	// cnv := tl.NewCanvas(areaWidth, areaHeight)
 
 	gameObjects = append(gameObjects, NewBorder(areaWidth, areaHeight))
-	gameObjects = append(gameObjects, NewTrees(150))
-	gameObjects = append(gameObjects, NewTraps(10))
-	gameObjects = append(gameObjects, NewTemples(5))
+	gameObjects = append(gameObjects, NewTrees(150+*players*2))
+	gameObjects = append(gameObjects, NewTraps(*players+7))
+	gameObjects = append(gameObjects, NewTemples(*players+2))
 
-	gameObjects = append(gameObjects, NewKnights(3))
+	gameObjects = append(gameObjects, NewKnights(*players))
 
 	for _, gObj := range gameObjects {
 		level.AddEntity(gObj.(tl.Drawable))
 	}
+	for _, gk := range gameObjects[objKnights].(*Knights).knights {
+		level.AddEntity(gk.text)
+	}
 
 	game.Screen().SetLevel(level)
-	game.Screen().SetFps(2)
+	game.Screen().SetFps(float64(*speed))
 	// game.SetEndKey(tl.KeyCtrlQ)
 	game.Start()
 }

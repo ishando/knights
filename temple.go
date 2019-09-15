@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"sort"
 
 	tl "github.com/JoelOtter/termloop"
@@ -10,6 +11,8 @@ const (
 	templeColour = tl.ColorRed | tl.AttrBold
 	templeChar   = '⨦' //✚'
 )
+
+var respawn = 50 + rand.Intn(100)
 
 // Temples -
 type Temples struct {
@@ -87,5 +90,12 @@ func (t *Temples) Draw(screen *tl.Screen) {
 			Fg: templeColour,
 			Ch: templeChar,
 		})
+	}
+}
+
+// Tick -
+func (t *Temples) Tick(ev tl.Event) {
+	if ticks%respawn == 0 && len(t.coords) == 0 {
+		t.coords[NewRandomCoord()] = 1
 	}
 }

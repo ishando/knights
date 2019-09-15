@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	tl "github.com/JoelOtter/termloop"
 )
 
@@ -8,6 +10,8 @@ const (
 	trapColour = tl.ColorMagenta
 	trapChar   = '❖'
 )
+
+var hazard = 40 + rand.Intn(80)
 
 // Traps -
 type Traps struct {
@@ -72,5 +76,12 @@ func (t *Traps) Draw(screen *tl.Screen) {
 			Fg: trapColour,
 			Ch: trapChar,
 		})
+	}
+}
+
+// Tick -
+func (t *Traps) Tick(ev tl.Event) {
+	if ticks%hazard == 0 {
+		t.coords[NewRandomCoord()] = 1
 	}
 }

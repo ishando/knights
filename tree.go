@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	tl "github.com/JoelOtter/termloop"
 )
 
@@ -8,6 +10,9 @@ const (
 	treeColour = tl.ColorGreen | tl.AttrBold
 	treeChar   = '⋏' //♠♣
 )
+
+var ticks = 0
+var growth = 60 + rand.Intn(70)
 
 // Trees -
 type Trees struct {
@@ -34,6 +39,19 @@ func NewTrees(size int) *Trees {
 func (t *Trees) Contains(c Coord) bool {
 	_, exists := t.coords[c]
 	return exists
+}
+
+// Tick -
+func (t *Trees) Tick(ev tl.Event) {
+	ticks++
+	if ticks%growth == 0 {
+		t.newTree()
+	}
+}
+
+func (t *Trees) newTree() {
+	pos := NewRandomCoord()
+	t.coords[pos] = 1
 }
 
 // Draw -
